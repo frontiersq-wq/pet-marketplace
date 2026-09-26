@@ -1,0 +1,470 @@
+// Pet Marketplace — Prisma schema (Phase 0)
+//
+// Database: SQLite for local dev, per CLAUDE.md. Postgres comes in Phase 4.
+//
+// SQLite connector notes (verified against Prisma 7.10.0):
+// - `enum` IS supported, so the role/status/category enums below survive the
+//   move to Postgres unchanged.
+// - Scalar lists (`String[]`) are NOT supported. Fields that are conceptually
+//   arrays or objects (images, areas, tags, traits) are stored as TEXT holding
+//   JSON. Read and write them through the helpers in `src/lib/json-fields.ts`.
+//   They are `String` rather than `Json` on purpose: Prisma emits an unquoted
+//   `DEFAULT {}` for Json defaults on SQLite, which SQLite rejects.
+// - The datasource URL lives in `prisma7.config.ts`, not here — that is the
+//   Prisma 7 convention.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  CUSTOMER
+  PROVIDER
+  ADMIN
+}
+
+enum ProviderType {
+  BREEDER
+  GROOMER
+  TRAINER
+  WALKER
+  SITTER
+  VET
+}
+
+enum Species {
+  DOG
+  CAT
+  BIRD
+  FISH
+  RABBIT
+  HAMSTER
+  TURTLE
+  OTHER
+}
+
+enum ListingPurpose {
+  SALE
+  ADOPTION
+  MATING
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  PAUSED
+  SOLD
+  REJECTED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  UNKNOWN
+}
+
+enum ServiceCategory {
+  GROOMING
+  BOARDING
+  WALKING
+  TRAINING
+  VETERINARY
+  SITTING
+}
+
+enum PriceUnit {
+  PER_SESSION
+  PER_HOUR
+  PER_DAY
+  PER_MONTH
+  FIXED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  LOST
+}
+
+enum ReviewTargetType {
+  LISTING
+  PROVIDER
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// ---------------------------------------------------------------------------
+// Auth.js models + application User
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  /// bcrypt hash. Null for OAuth-only users; set for credentials sign-in.
+  passwordHash  String?
+  phone         String?
+  role          Role      @default(CUSTOMER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts        Account[]
+  sessions        Session[]
+  providerProfile ProviderProfile?
+  listings        Listing[]
+  bookings        Booking[]        @relation("BookingCustomer")
+  reviews         Review[]
+  blogPosts       BlogPost[]
+
+  @@index([role])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------------------------------------------------------------------------
+// Location — a first-class filter across listings, services and leads
+// ---------------------------------------------------------------------------
+
+model City {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  state     String
+  country   String   @default("IN")
+  latitude  Float?
+  longitude Float?
+  isActive  Boolean  @default(true)
+  /// Intro copy for the /pets-in-<city> landing pages built in Phase 1.
+  seoBlurb  String?
+  createdAt DateTime @default(now())
+
+  listings  Listing[]
+  providers ProviderProfile[]
+  services  Service[]
+  leads     Lead[]
+
+  @@index([state])
+  @@index([isActive])
+}
+
+// ---------------------------------------------------------------------------
+// Providers
+// ---------------------------------------------------------------------------
+
+model ProviderProfile {
+  id           String       @id @default(cuid())
+  userId       String       @unique
+  type         ProviderType
+  businessName String
+  slug         String       @unique
+  bio          String?
+  logoUrl      String?
+  phone        String?
+  whatsapp     String?
+  cityId       String?
+  /// JSON array of neighbourhoods/pincodes served within the city.
+  areas        String       @default("[]")
+  verified     Boolean      @default(false)
+  verifiedAt   DateTime?
+  ratingAvg    Float        @default(0)
+  ratingCount  Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city     City?     @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  services Service[]
+
+  @@index([type])
+  @@index([cityId])
+  @@index([verified])
+}
+
+// ---------------------------------------------------------------------------
+// Breeds — powers breed info pages and the Phase 1 comparison tool
+// ---------------------------------------------------------------------------
+
+model Breed {
+  id      String  @id @default(cuid())
+  slug    String  @unique
+  name    String
+  species Species
+  /// Structured attributes for the compare tool: size, lifespan, temperament,
+  /// grooming/exercise/shedding scores, good-with-kids, etc.
+  traits  String  @default("{}")
+  /// JSON array of image URLs.
+  images  String  @default("[]")
+
+  summary     String?
+  description String?
+  origin      String?
+
+  seoTitle       String?
+  seoDescription String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listings Listing[]
+  leads    Lead[]
+
+  @@unique([species, name])
+  @@index([species])
+}
+
+// ---------------------------------------------------------------------------
+// Listings
+// ---------------------------------------------------------------------------
+
+model Listing {
+  id      String         @id @default(cuid())
+  slug    String         @unique
+  title   String
+  purpose ListingPurpose
+  species Species
+  breedId String?
+  cityId  String
+  ownerId String
+
+  description String?
+  ageMonths   Int?
+  gender      Gender   @default(UNKNOWN)
+  /// Null means "price on request" — normal for ADOPTION and MATING.
+  price       Decimal?
+  currency    String   @default("INR")
+  /// JSON array of image URLs. Phase 0 serves these from /public/uploads.
+  images      String   @default("[]")
+
+  vaccinated   Boolean @default(false)
+  dewormed     Boolean @default(false)
+  kciCertified Boolean @default(false)
+
+  status      ListingStatus @default(DRAFT)
+  featured    Boolean       @default(false)
+  views       Int           @default(0)
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  owner    User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  breed    Breed?    @relation(fields: [breedId], references: [id], onDelete: SetNull)
+  city     City      @relation(fields: [cityId], references: [id])
+  bookings Booking[]
+  leads    Lead[]
+
+  // Mirrors the Phase 1 filter combination: species + breed + city + price.
+  @@index([status, species, cityId])
+  @@index([status, breedId])
+  @@index([status, purpose])
+  @@index([price])
+  @@index([ownerId])
+  @@index([publishedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Services
+// ---------------------------------------------------------------------------
+
+model Service {
+  id          String          @id @default(cuid())
+  slug        String          @unique
+  title       String
+  category    ServiceCategory
+  providerId  String
+  cityId      String?
+  description String?
+  priceFrom   Decimal?
+  priceUnit   PriceUnit       @default(PER_SESSION)
+  currency    String          @default("INR")
+  /// JSON array of image URLs.
+  images      String          @default("[]")
+  /// JSON array of neighbourhoods served, when narrower than the whole city.
+  coverage    String          @default("[]")
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  provider ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  city     City?           @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  bookings Booking[]
+
+  @@index([category, cityId])
+  @@index([providerId])
+  @@index([isActive])
+}
+
+// ---------------------------------------------------------------------------
+// Bookings and leads
+// ---------------------------------------------------------------------------
+
+model Booking {
+  id          String        @id @default(cuid())
+  customerId  String
+  /// Exactly one of listingId / serviceId is set.
+  listingId   String?
+  serviceId   String?
+  status      BookingStatus @default(PENDING)
+  scheduledAt DateTime?
+  notes       String?
+  priceQuoted Decimal?
+  currency    String        @default("INR")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  customer User     @relation("BookingCustomer", fields: [customerId], references: [id], onDelete: Cascade)
+  listing  Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  service  Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+/// Captures the multi-step inquiry form. Deliberately denormalised and
+/// standalone: leads arrive from anonymous visitors and must never fail to
+/// save just because a related row is missing.
+model Lead {
+  id          String     @id @default(cuid())
+  name        String
+  phone       String
+  email       String?
+  species     Species?
+  breedId     String?
+  cityId      String?
+  /// Free-text fallbacks for when the visitor picks a place we don't list yet.
+  stateName   String?
+  cityName    String?
+  requirement String?
+  budgetMin   Decimal?
+  budgetMax   Decimal?
+  message     String?
+  listingId   String?
+  status      LeadStatus @default(NEW)
+  /// Which page or campaign produced the lead.
+  source      String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  breed   Breed?   @relation(fields: [breedId], references: [id], onDelete: SetNull)
+  city    City?    @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  listing Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([phone])
+}
+
+// ---------------------------------------------------------------------------
+// Reviews and content
+// ---------------------------------------------------------------------------
+
+model Review {
+  id         String           @id @default(cuid())
+  authorId   String
+  targetType ReviewTargetType
+  /// Points at Listing.id or ProviderProfile.id, depending on targetType.
+  targetId   String
+  rating     Int
+  title      String?
+  body       String?
+  status     ContentStatus    @default(PUBLISHED)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([authorId, targetType, targetId])
+  @@index([targetType, targetId])
+  @@index([rating])
+}
+
+model BlogPost {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  title       String
+  excerpt     String?
+  body        String
+  category    String
+  coverImage  String?
+  /// JSON array of tag strings.
+  tags        String        @default("[]")
+  authorId    String?
+  status      ContentStatus @default(DRAFT)
+  publishedAt DateTime?
+  readMinutes Int?
+
+  seoTitle       String?
+  seoDescription String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([status, publishedAt])
+  @@index([category])
+}
