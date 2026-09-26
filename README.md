@@ -3,8 +3,9 @@
 A two-sided pet marketplace and services platform. See [CLAUDE.md](./CLAUDE.md) for the
 full project brief and phase plan.
 
-**Status: Phase 0 complete** — scaffold, SQLite database, auth and seed data.
-Phase 1 (the public SEO site) has not started.
+**Status: Phase 1, Chunk 1 complete** — site shell (header/footer) and homepage.
+Remaining Phase 1 chunks — listings, breed pages, services, lead form, blog, admin —
+are not built yet.
 
 ## Stack
 
@@ -85,6 +86,30 @@ src/
   generated/prisma/      generated client (gitignored)
 prisma7.config.ts        Prisma 7 config — holds the datasource URL
 ```
+
+## UI conventions
+
+Established in Phase 1 Chunk 1. Later chunks should follow these so the site stays
+consistent.
+
+| Concern | Convention |
+|---|---|
+| Colors | `brand-*` (teal) for structure, links and primary buttons. `accent-*` (amber) **only** for the single highest-intent action on a screen — currently "Enquire". Everything else is `neutral-*`. Defined in `src/app/globals.css` under `@theme`. |
+| Width | Wrap every section's contents in `<Container>` (`max-w-6xl` + responsive padding). Never set page padding ad hoc. |
+| Section rhythm | `py-16 sm:py-20`. Alternate plain white and `bg-neutral-50` bands to separate sections. |
+| Cards | `rounded-xl border border-neutral-200 bg-white`, `hover:shadow-md`. |
+| Buttons | Use `ButtonLink` or `buttonClass()` from `src/components/ui/button.tsx`. Variants: `primary`, `accent`, `outline`, `ghost`. Don't hand-roll button classes. |
+| Headings | Page `h1` is `text-4xl sm:text-5xl font-bold`; section `h2` is `text-2xl sm:text-3xl font-bold`. |
+| Focus | Handled globally in `globals.css`. Don't add per-component focus rings. |
+| Icons | Inline SVG, no icon dependency. |
+| Server/Client | Server Components by default. `"use client"` only for genuine interactivity — right now `mobile-nav.tsx` is the only one. |
+
+Shared building blocks already available: `Container`, `ButtonLink`/`buttonClass`,
+`ListingCard`, plus `src/lib/site.ts` (nav, brand, contact), `src/lib/format.ts`
+(prices, ages, enum labels) and `src/lib/service-categories.ts`.
+
+Styling is **light-mode only** for now — a half-finished dark mode spread across six
+chunks is worse than none. Revisit once the public pages exist.
 
 ## Things worth knowing
 
