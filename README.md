@@ -3,9 +3,9 @@
 A two-sided pet marketplace and services platform. See [CLAUDE.md](./CLAUDE.md) for the
 full project brief and phase plan.
 
-**Status: Phase 1, Chunk 1 complete** — site shell (header/footer) and homepage.
-Remaining Phase 1 chunks — listings, breed pages, services, lead form, blog, admin —
-are not built yet.
+**Status: Phase 1, Chunk 2 complete** — site shell, homepage, and pet listings
+with filterable index and detail pages. Remaining Phase 1 chunks — breed pages,
+services, lead form, blog, and admin — are not built yet.
 
 ## Stack
 

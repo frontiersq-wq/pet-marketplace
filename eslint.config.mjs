@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Replit's local agent files and generated artifact services are not this app.
+    ".local/**",
+    ".agents/**",
+    "artifacts/**",
   ]),
 ]);
 
