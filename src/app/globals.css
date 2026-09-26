@@ -1,4 +1,7 @@
-@import "tailwindcss";
+/* Only app source should contribute utilities; workspace tools and generated
+   artifacts can be large and are not part of this Next.js site. */
+@import "tailwindcss" source(none);
+@source "../";
 
 /*
  * Design tokens for the whole site. Tailwind v4 reads these and generates the
