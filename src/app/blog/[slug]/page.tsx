@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { PostCard, formatCategory, type PostCardData } from "@/components/post-card";
@@ -36,6 +37,7 @@ const getPost = cache((slug: string) =>
       coverImage: true,
       tags: true,
       publishedAt: true,
+      updatedAt: true,
       readMinutes: true,
       seoTitle: true,
       seoDescription: true,
@@ -74,6 +76,28 @@ export default async function BlogPostPage({ params }: PageProps) {
   if (!post) notFound();
 
   const tags = parseStringArray(post.tags);
+  const base = (process.env.AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    description: post.excerpt ?? post.body.slice(0, 200),
+    url: `${base}/blog/${post.slug}`,
+    datePublished: post.publishedAt?.toISOString(),
+    dateModified: post.updatedAt.toISOString(),
+    author: {
+      "@type": "Organization",
+      name: "PetHaven",
+      url: base,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "PetHaven",
+      url: base,
+    },
+    ...(post.coverImage ? { image: post.coverImage } : {}),
+  };
 
   const related = await prisma.blogPost.findMany({
     where: {
@@ -98,13 +122,19 @@ export default async function BlogPostPage({ params }: PageProps) {
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+      />
       <Container className="py-12 sm:py-16">
-        <Link
-          href="/blog"
-          className="text-sm font-medium text-brand-700 hover:text-brand-800"
-        >
-          &larr; All articles
-        </Link>
+        <Breadcrumbs
+          crumbs={[
+            { label: "Home", href: "/" },
+            { label: "Blog", href: "/blog" },
+            { label: formatCategory(post.category), href: `/blog/category/${post.category}` },
+            { label: post.title, href: `/blog/${post.slug}` },
+          ]}
+        />
 
         <div className="mt-6 max-w-3xl">
           <div className="flex flex-wrap items-center gap-3">

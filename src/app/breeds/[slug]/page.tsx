@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ListingCard } from "@/components/listing-card";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -69,12 +70,13 @@ export default async function BreedDetailPage({ params }: PageProps) {
   return (
     <>
       <Container className="py-16 sm:py-20">
-        <Link
-          href="/breeds"
-          className="text-sm font-medium text-brand-700 hover:text-brand-800"
-        >
-          &larr; All breeds
-        </Link>
+        <Breadcrumbs
+          crumbs={[
+            { label: "Home", href: "/" },
+            { label: "Breeds", href: "/breeds" },
+            { label: breed.name, href: `/breeds/${breed.slug}` },
+          ]}
+        />
 
         <div className="mt-6 max-w-3xl">
           <div className="flex flex-wrap items-center gap-3">

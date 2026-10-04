@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { PriceUnit } from "@/generated/prisma/enums";
@@ -96,12 +97,13 @@ export default async function ServiceCategoryPage({
     <>
       <section className="border-b border-neutral-200 bg-gradient-to-b from-brand-50 to-white">
         <Container className="py-16 sm:py-20">
-          <Link
-            href="/services"
-            className="text-sm font-medium text-brand-700 hover:text-brand-800"
-          >
-            &larr; All services
-          </Link>
+          <Breadcrumbs
+            crumbs={[
+              { label: "Home", href: "/" },
+              { label: "Services", href: "/services" },
+              { label: `${meta.label} services`, href: `/services/${meta.slug}` },
+            ]}
+          />
           <div className="mt-6 max-w-2xl">
             <h1 className="text-4xl font-bold tracking-tight text-neutral-900 sm:text-5xl">
               {meta.label} services

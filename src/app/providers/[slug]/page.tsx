@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ListingCard } from "@/components/listing-card";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -104,12 +105,16 @@ export default async function ProviderPage({ params }: PageProps) {
   return (
     <>
       <Container className="py-16 sm:py-20">
-        <Link
-          href={firstServiceCategory ? `/services/${firstServiceCategory.slug}` : "/services"}
-          className="text-sm font-medium text-brand-700 hover:text-brand-800"
-        >
-          &larr; Back to services
-        </Link>
+        <Breadcrumbs
+          crumbs={[
+            { label: "Home", href: "/" },
+            { label: "Services", href: "/services" },
+            ...(firstServiceCategory
+              ? [{ label: firstServiceCategory.label, href: `/services/${firstServiceCategory.slug}` }]
+              : []),
+            { label: provider.businessName, href: `/providers/${provider.slug}` },
+          ]}
+        />
 
         <div className="mt-6 flex flex-wrap items-start gap-6">
           <div className="flex-1">

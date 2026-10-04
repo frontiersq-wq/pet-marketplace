@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { PostCard, formatCategory, type PostCardData } from "@/components/post-card";
@@ -67,12 +68,13 @@ export default async function BlogCategoryPage({ params }: PageProps) {
     <>
       <section className="border-b border-neutral-200 bg-gradient-to-b from-brand-50 to-white">
         <Container className="py-12 sm:py-16">
-          <Link
-            href="/blog"
-            className="text-sm font-medium text-brand-700 hover:text-brand-800"
-          >
-            &larr; All articles
-          </Link>
+          <Breadcrumbs
+            crumbs={[
+              { label: "Home", href: "/" },
+              { label: "Blog", href: "/blog" },
+              { label, href: `/blog/category/${category}` },
+            ]}
+          />
           <div className="mt-6 max-w-2xl">
             <span className="rounded-full bg-brand-50 px-3 py-1 text-sm font-medium text-brand-700">
               {label}

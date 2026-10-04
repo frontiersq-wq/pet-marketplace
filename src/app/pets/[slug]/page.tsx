@@ -3,10 +3,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ListingCard } from "@/components/listing-card";
 import { ButtonLink, buttonClass } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import {
+  ListingPurpose,
   ListingStatus,
 } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
@@ -116,15 +118,45 @@ export default async function PetDetailPage({ params }: PageProps) {
   const provider = listing.owner.providerProfile;
   const providerName = provider?.businessName ?? listing.owner.name ?? "PetHaven seller";
 
+  const base = (process.env.AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const priceNum =
+    listing.purpose === ListingPurpose.SALE && listing.price
+      ? Number(listing.price.toString())
+      : undefined;
+
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: listing.title,
+    description: listing.description ?? undefined,
+    url: `${base}/pets/${listing.slug}`,
+    ...(priceNum !== undefined
+      ? {
+          offers: {
+            "@type": "Offer",
+            priceCurrency: "INR",
+            price: priceNum,
+            availability: "https://schema.org/InStock",
+            seller: { "@type": "Organization", name: providerName },
+          },
+        }
+      : {}),
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+      />
       <Container className="py-16 sm:py-20">
-        <Link
-          href="/pets"
-          className="text-sm font-medium text-brand-700 hover:text-brand-800"
-        >
-          ← Back to all pets
-        </Link>
+        <Breadcrumbs
+          crumbs={[
+            { label: "Home", href: "/" },
+            { label: "Pets", href: "/pets" },
+            { label: listing.title, href: `/pets/${listing.slug}` },
+          ]}
+        />
 
         <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
           <section aria-label="Pet photos">

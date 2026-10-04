@@ -66,11 +66,29 @@ async function getFeaturedListings(): Promise<ListingCardData[]> {
   }));
 }
 
+const BASE = (process.env.AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
+
+const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: site.name,
+  url: BASE,
+  potentialAction: {
+    "@type": "SearchAction",
+    target: `${BASE}/pets?species={search_term_string}`,
+    "query-input": "required name=search_term_string",
+  },
+};
+
 export default async function HomePage() {
   const featured = await getFeaturedListings();
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+      />
       <Hero />
       <FeaturedPets listings={featured} />
       <BrowseByService />
