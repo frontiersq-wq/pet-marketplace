@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // better-sqlite3 is a native (.node) addon. Turbopack cannot bundle it, so it
-  // has to be required at runtime from node_modules instead.
-  serverExternalPackages: ["better-sqlite3", "@prisma/adapter-better-sqlite3"],
+  // pg is a native Node.js module — mark it external so Next.js does not
+  // try to bundle it and instead requires it from node_modules at runtime.
+  serverExternalPackages: ["pg"],
 };
 
 export default nextConfig;

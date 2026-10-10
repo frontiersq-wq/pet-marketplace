@@ -1,13 +1,11 @@
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 import { PrismaClient } from "@/generated/prisma/client";
 
-// Prisma 7 requires a driver adapter for SQL databases; the old built-in
-// Rust query engine is gone. Phase 4 swaps this for `@prisma/adapter-pg`.
+// Prisma 7 requires a driver adapter for SQL databases.
+// Phase 4: switched from better-sqlite3 (SQLite) to pg (PostgreSQL/Neon).
 function createPrismaClient() {
-  const adapter = new PrismaBetterSqlite3({
-    url: process.env.DATABASE_URL ?? "file:./prisma/dev.db",
-  });
+  const adapter = new PrismaPg(process.env.DATABASE_URL!);
 
   return new PrismaClient({
     adapter,
@@ -15,8 +13,8 @@ function createPrismaClient() {
   });
 }
 
-// `next dev` re-evaluates modules on every change. Without this cache each
-// reload would open another SQLite connection until the process runs out.
+// `next dev` re-evaluates modules on every hot-reload; the global cache
+// prevents opening a new connection pool on each reload.
 const globalForPrisma = globalThis as unknown as {
   prisma?: ReturnType<typeof createPrismaClient>;
 };
